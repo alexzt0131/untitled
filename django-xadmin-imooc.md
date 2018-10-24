@@ -221,10 +221,10 @@
 #四、 django app 设计（MOOC网站）
 
 ##模块分析0
-**users-用户管理
-**course-课程管理
-**organization-机构和教师管理
-**operation-用户操作管理
+**users-用户管理**
+**course-课程管理**
+**organization-机构和教师管理**
+**operation-用户操作管理**
 
 ## 实现流程
 **前期准备工作
@@ -239,11 +239,11 @@
 		2）配置settings.py中的databases，
 		3）在mysql中创建一个mxonline的数据库
 		4）使用djangoadmin命令生成数据库（makemigrations - migrate）
-**modle设计
+**modle设计**
 	1.Users model
 		1）使用pycharm新建webapp Users
 		2）创建User modle
-			*扩展django Usermodle
+			*扩展django Usermodle*
 				定义UserProfile类集成AbstractUser来实现
 				类中添加需要的字段（nick_name, birday, gender, address, mobile, image）
 					gender只有两个选择可使用django模板中的choices
