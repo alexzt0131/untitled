@@ -220,7 +220,7 @@
 
 #四、 django app 设计（MOOC网站）
 
-##模块分析0
+## 模块分析0
 	**users-用户管理**
 	**course-课程管理**
 	**organization-机构和教师管理**
@@ -239,23 +239,23 @@
 			2）配置settings.py中的databases，
 			3）在mysql中创建一个mxonline的数据库
 			4）使用djangoadmin命令生成数据库（makemigrations - migrate）
-**modle设计**
-	1.Users model
-		1）使用pycharm新建webapp Users
-		2）创建User modle
-			*扩展django Usermodle*
-				定义UserProfile类集成AbstractUser来实现
-				类中添加需要的字段（nick_name, birday, gender, address, mobile, image）
-					gender只有两个选择可使用django模板中的choices
-					models.CharField(max_length=5，choices=(("male","男"), ("female", "女")), default="male")
-					image 用户头像图片
-					models.ImageField(upload_to="image/%Y/%m", default="image/default.png", max_length=100)
-					使用ImageField需要安装python pillow模块，使用pip install pillow即可
-				定义 内部类 Meta
-					定义verbose_name 与verbose_name_plural，可查看django基础部分
-					定义__unicode__方法为django admin 提供注册model的显示，python3 为__str__方法
-				在定义AUTH_USER_MODEL = "users.UserProfile" #app名称+class名
-				生成数据库（makemigrations - migrate）
+	**modle设计**
+		1.Users model
+			1）使用pycharm新建webapp Users
+			2）创建User modle
+				*扩展django Usermodle*
+					定义UserProfile类集成AbstractUser来实现
+					类中添加需要的字段（nick_name, birday, gender, address, mobile, image）
+						gender只有两个选择可使用django模板中的choices
+						models.CharField(max_length=5，choices=(("male","男"), ("female", "女")), default="male")
+						image 用户头像图片
+						models.ImageField(upload_to="image/%Y/%m", default="image/default.png", max_length=100)
+						使用ImageField需要安装python pillow模块，使用pip install pillow即可
+					定义 内部类 Meta
+						定义verbose_name 与verbose_name_plural，可查看django基础部分
+						定义__unicode__方法为django admin 提供注册model的显示，python3 为__str__方法
+					在定义AUTH_USER_MODEL = "users.UserProfile" #app名称+class名
+					生成数据库（makemigrations - migrate）
 				
 				
 	
