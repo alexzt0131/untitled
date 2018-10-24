@@ -221,24 +221,24 @@
 #四、 django app 设计（MOOC网站）
 
 ##模块分析0
-**users-用户管理**
-**course-课程管理**
-**organization-机构和教师管理**
-**operation-用户操作管理**
+	**users-用户管理**
+	**course-课程管理**
+	**organization-机构和教师管理**
+	**operation-用户操作管理**
 
 ## 实现流程
-**前期准备工作
-	0.开发环境选择
-		django = 1.9.8
-		python = 2.7
-		
-	1.django创建新项目
-		projectname = mxonline
-	2.配置数据库
-		1）安装mysql驱动 pip install mysql-python
-		2）配置settings.py中的databases，
-		3）在mysql中创建一个mxonline的数据库
-		4）使用djangoadmin命令生成数据库（makemigrations - migrate）
+	**前期准备工作
+		0.开发环境选择
+			django = 1.9.8
+			python = 2.7
+
+		1.django创建新项目
+			projectname = mxonline
+		2.配置数据库
+			1）安装mysql驱动 pip install mysql-python
+			2）配置settings.py中的databases，
+			3）在mysql中创建一个mxonline的数据库
+			4）使用djangoadmin命令生成数据库（makemigrations - migrate）
 **modle设计**
 	1.Users model
 		1）使用pycharm新建webapp Users
