@@ -254,21 +254,62 @@
 				定义__unicode__方法为django admin 提供注册model的显示，python3 为__str__方法
 			在定义AUTH_USER_MODEL = "users.UserProfile" #app名称+class名
 			生成数据库（makemigrations - migrate）
-			`class UserProfile(AbstractUser):
-
-			    nick_name = models.CharField(max_length=50, default='', verbose_name='昵称')
-			    briday = models.DateField(null=True, blank=True, verbose_name='生日')
-			    gender = models.CharField(max_length=10, choices=(("male", "男"), ("female", "女")), default="male")
-			    address = models.CharField(max_length=100, default='')
-			    mobile = models.CharField(max_length=11, null=True, blank=True)
-			    image = models.ImageField(upload_to="image/%Y/%m", default="image/default.png", max_length=100, verbose_name='用户头像')
-			
-			    class Meta():
-			        verbose_name = "用户信息"
-			        verbose_name_plural = verbose_name
-			
+	代码：
+	'
+	##coding:utf-8
+	from __future__ import unicode_literals
+	
+	from datetime import datetime
+	from django.contrib.auth.models import AbstractUser
+	from django.db import models
+	
+	# Create your models here.
+	
+	class UserProfile(AbstractUser):
+	
+	    nick_name = models.CharField(max_length=50, default='', verbose_name='昵称')
+	    briday = models.DateTimeField(null=True, blank=True, verbose_name='生日')
+	    gender = models.CharField(max_length=10, choices=(("male", "男"), ("female", "女")), default="male")
+	    address = models.CharField(max_length=100, default='')
+	    mobile = models.CharField(max_length=11, null=True, blank=True)
+	    image = models.ImageField(upload_to="image/%Y/%m", default="image/default.png", max_length=100, verbose_name='用户头像')
+	
+	    class Meta():
+	        verbose_name = "用户信息"
+	        verbose_name_plural = verbose_name
+	
 	    def __unicode__(self):
-			        return self.username`
+	        return self.username
+	
+	
+	class EmailVerifyRecord(models.Model):
+	    code = models.CharField(max_length=20, verbose_name="验证码")
+	    email = models.EmailField(max_length=50, verbose_name='邮箱')
+	    send_type = models.CharField(choices=(('register', '注册'), ('forget', '忘记密码')), default='register', max_length=50, verbose_name='验证码类型')
+	    send_time = models.DateTimeField(default=datetime.now, verbose_name='发送时间')
+	
+	    class Meta:
+	        verbose_name = '邮箱验证码'
+	        verbose_name_plural = verbose_name
+	
+	    def __unicode__(self):
+	        return '{}({})'.format(self.code, self.email)
+	
+	
+	class Banner(models.Model):
+	    title = models.CharField(max_length=100, verbose_name="标题")
+	    image = models.ImageField(upload_to='banner/%Y/%m', verbose_name='轮播图')
+	    url = models.URLField(max_length=200, verbose_name='访问地址')
+	    index = models.IntegerField(default=100, verbose_name='顺序')
+	    add_time = models.DateTimeField(default=datetime.now, verbose_name='添加时间')
+	
+	    class Meta:
+	        verbose_name = '轮播图'
+	        verbose_name_plural = verbose_name
+	
+	    def __unicode__(self):
+	        return self.title	
+	'
 **2.Course app**
 	0)创建course modle
 
@@ -304,7 +345,20 @@
 			download 	下载地址 models.FileField(upload_to="course/resource/%Y/%m", verbose_name="资源文件"， max_length=100)
 			add_time 	创建时间
 		定义Meta内部类与__str__函数
-	`class Course(models.Model):
+	代码：
+	'
+	##coding:utf-8
+	import django
+	from django.db import models
+	
+	from datetime import datetime
+	# from django.utils.timezone import now
+	#
+	# print now()
+	
+	# Create your models here.
+	class Course(models.Model):
+	
 	
 	    name = models.CharField(max_length=100, verbose_name="课程名")
 	    desc = models.CharField(max_length=200, verbose_name="课程描述")
@@ -317,15 +371,60 @@
 	    fav_nums = models.IntegerField(default=0, verbose_name="收藏人数")
 	    image = models.ImageField(upload_to="courses/%Y/%m", verbose_name='封面图')
 	    click_num = models.IntegerField(default=0, verbose_name='点击人数')
-	    add_time = models.DateField(default=datetime.now(), verbose_name='添加时间')
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='添加时间')
 	
 	    class Meta():
 	        verbose_name = "课程基本信息"
 	        verbose_name_plural = verbose_name
 	
-	    def __unicode__(self):
+	    # def __str__(self):
+	    #     return self.name
+	    def __unicode__ (self):
 	        return self.name
-	`
+	
+	class Lesson(models.Model):
+	    course = models.ForeignKey(Course, verbose_name="课程")
+	    name = models.CharField(max_length=100, verbose_name='章节名')
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='添加时间')
+	
+	    class Meta():
+	        verbose_name = "章节"
+	        verbose_name_plural = verbose_name
+	
+	    # def __str__(self):
+	    #     return self.name
+	    def __unicode__ (self):
+	        return self.name
+	
+	class Video(models.Model):
+	    lesson = models.ForeignKey(Lesson, verbose_name="章节")
+	    name = models.CharField(max_length=100, verbose_name='视频名')
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='添加时间')
+	
+	    class Meta():
+	        verbose_name = "视频"
+	        verbose_name_plural = verbose_name
+	
+	    # def __str__(self):
+	    #     return self.name
+	    def __unicode__ (self):
+	        return self.name
+	
+	class CourseResource(models.Model):
+	    course = models.ForeignKey(Course, verbose_name="课程")
+	    name = models.CharField(max_length=100, verbose_name='名称')
+	    download = models.FileField(upload_to="course/resource/%Y/%m", verbose_name='下载内容')
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='添加时间')
+	
+	    class Meta():
+	        verbose_name = "课程资源"
+	        verbose_name_plural = verbose_name
+	
+	    # def __str__(self):
+	    #     return self.name
+	    def __unicode__ (self):
+	        return self.name	
+	'
 **3.organization app**
 	0)创建 organization model
 	
@@ -362,10 +461,21 @@
 			add_time 	创建时间
 		定义Meta内部类与__str__函数
 	
-	`class CityDict(models.Model):
+	代码：
+	'
+	##coding:utf-8
+	from __future__ import unicode_literals
+	
+	from django.db import models
+	from datetime import  datetime
+	# Create your models here.
+	from course.models import Course
+	
+	
+	class CityDict(models.Model):
 	    name = models.CharField(max_length=100, verbose_name="城市名称")
 	    desc = models.CharField(max_length=200, verbose_name="城市描述")
-	    add_time = models.DateField(default=datetime.now(), verbose_name='创建时间')
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='创建时间')
 	
 	    class Meta():
 	        verbose_name = "城市信息"
@@ -375,7 +485,7 @@
 	        return self.name
 	
 	
-	class Oragnization(models.Model):
+	class CourseOrg(models.Model):
 	
 	
 	    name = models.CharField(max_length=100, verbose_name="机构名称")
@@ -384,7 +494,7 @@
 	    fav_nums = models.IntegerField(default=0, verbose_name="收藏人数")
 	    image = models.ImageField(upload_to="courses/%Y/%m", verbose_name='封面图')
 	    address = models.CharField(max_length=100, null=True, blank=True, verbose_name="机构地址")
-	    add_time = models.DateField(default=datetime.now(), verbose_name='创建时间')
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='创建时间')
 	    city = models.ForeignKey(CityDict, verbose_name='所在城市')
 	
 	    class Meta():
@@ -404,14 +514,15 @@
 	    points = models.CharField(max_length=100, verbose_name="教学特点")
 	    click_num = models.IntegerField(default=0, verbose_name='点击人数')
 	    fav_nums = models.IntegerField(default=0, verbose_name="收藏人数")
-	    add_time = models.DateField(default=datetime.now(), verbose_name='创建时间')
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='创建时间')
 	
 	    class Meta():
 	        verbose_name = "教师基本信息"
 	        verbose_name_plural = verbose_name
 	
 	    def __unicode__(self):
-	        return self.name`
+	        return self.name
+	'
 **4.operation app**
 	0)创建 operation model
 	
@@ -449,90 +560,69 @@
 			
 		add_time 	创建时间
 	定义Meta内部类与__str__函数
-	`'''
-	用户咨询
-	'''
-	class UserAsk(models.Model):
 	
-	    name = models.CharField(max_length=100, verbose_name="姓名")
-	    course = models.CharField(max_length=100, verbose_name="课程名称")
-	    mobile = models.CharField(max_length=11, verbose_name='手机')
-	    add_time = models.DateField(default=datetime.now(), verbose_name='创建时间')
+	代码：
+	'
+	##coding:utf-8
+	from __future__ import unicode_literals
+	
+	from django.db import models
+	from datetime import  datetime
+	# Create your models here.
+	from course.models import Course
+	
+	
+	class CityDict(models.Model):
+	    name = models.CharField(max_length=100, verbose_name="城市名称")
+	    desc = models.CharField(max_length=200, verbose_name="城市描述")
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='创建时间')
 	
 	    class Meta():
-	        verbose_name = "用户咨询"
+	        verbose_name = "城市信息"
 	        verbose_name_plural = verbose_name
 	
 	    def __unicode__(self):
-	        return self.name + self.course
+	        return self.name
 	
-	'''
-	用户评论
-	'''
-	class CourseComments(models.Model):
 	
-	    name = models.CharField(max_length=100, verbose_name="用户")
-	    course = models.CharField(max_length=100, verbose_name="课程")
-	    comments = models.TextField(default='', verbose_name='留言')
-	    add_time = models.DateField(default=datetime.now(), verbose_name='创建时间')
+	class CourseOrg(models.Model):
+	
+	
+	    name = models.CharField(max_length=100, verbose_name="机构名称")
+	    desc = models.CharField(max_length=200, verbose_name="机构描述")
+	    click_num = models.IntegerField(default=0, verbose_name='点击人数')
+	    fav_nums = models.IntegerField(default=0, verbose_name="收藏人数")
+	    image = models.ImageField(upload_to="courses/%Y/%m", verbose_name='封面图')
+	    address = models.CharField(max_length=100, null=True, blank=True, verbose_name="机构地址")
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='创建时间')
+	    city = models.ForeignKey(CityDict, verbose_name='所在城市')
 	
 	    class Meta():
-	        verbose_name = "用户评论"
+	        verbose_name = "课程机构基本信息"
 	        verbose_name_plural = verbose_name
 	
 	    def __unicode__(self):
-	        return self.name + self.course
+	        return self.name
 	
-	'''
-	用户收藏
-	'''
-	class UserFavorite(models.Model):
+	class Teacher(models.Model):
 	
-	    user = models.ForeignKey(UserProfile, verbose_name='用户')
-	    fav_id = models.CharField(max_length=200, verbose_name='数据id')
-	    fav_type = models.IntegerField(choices=((1, "课程"), (2, "课程机构"), (3, "讲师")), default=1, verbose_name="收藏类型")
-	    add_time = models.DateField(default=datetime.now(), verbose_name='创建时间')
-	
-	    class Meta():
-	        verbose_name = "用户收藏"
-	        verbose_name_plural = verbose_name
-	
-	    def __unicode__(self):
-	        return self.user + self.fav_id
-	
-	
-	'''
-	用户消息
-	'''
-	class UserMessage(models.Model):
-	
-	    user = models.IntegerField(default=0, verbose_name='接收用户id')#接受用户id（int型，默认为0,0为所有用户，非0既用户id）
-	    message = models.TextField(default='', verbose_name='评论')
-	    has_read = models.BooleanField(default=False, verbose_name="是否已读")
-	    add_time = models.DateField(default=datetime.now(), verbose_name='创建时间')
-	
-	    class Meta():
-	        verbose_name = "用户消息"
-	        verbose_name_plural = verbose_name
-	
-	    def __unicode__(self):
-	        return self.user + self.has_read
-	
-	
-	'''
-	用户学习的课程
-	'''
-	class UserCourse(models.Model):
-	    user = models.ForeignKey(UserProfile, verbose_name='用户')
+	    name = models.CharField(max_length=100, verbose_name="教师姓名")
+	    work_yesrs = models.IntegerField(default=0, verbose_name='工作年限')
+	    work_company = models.CharField(max_length=100, verbose_name="就职公司")
+	    work_position = models.CharField(max_length=100, verbose_name="公司职位")
 	    course = models.ForeignKey(Course, verbose_name='课程')
-	    add_time = models.DateField(default=datetime.now(), verbose_name='创建时间')
+	    points = models.CharField(max_length=100, verbose_name="教学特点")
+	    click_num = models.IntegerField(default=0, verbose_name='点击人数')
+	    fav_nums = models.IntegerField(default=0, verbose_name="收藏人数")
+	    add_time = models.DateTimeField(default=datetime.now(), verbose_name='创建时间')
 	
 	    class Meta():
-	        verbose_name = "用户学习的课程"
+	        verbose_name = "教师基本信息"
 	        verbose_name_plural = verbose_name
 	
 	    def __unicode__(self):
-	        return self.user`
+	        return self.name
+	'
 
 ## 生成数据库表 ##
 
@@ -603,9 +693,373 @@
 	
 
 ## 5-4 剩余app model注册 ##
+** opration、organization与course 和5-3的步骤以一样直接贴代码 **
+	
+	`import xadmin
+	from .models import UserAsk, CourseComments, UserFavorite, UserMessage, UserCourse
+	
+	
+	
+	class UserAskAdmin(object):
+	    list_display = ['name', 'course', 'mobile', 'add_time']
+	    search_fields = ['name', 'course', 'mobile']
+	    list_filter = ['name', 'course', 'mobile', 'add_time']
+	
+	class CourseCommentsAdmin(object):
+	    list_display = ['name', 'course', 'comments', 'add_time']
+	    search_fields = ['name', 'course', 'comments']
+	    list_filter = ['name', 'course', 'comments', 'add_time']
+	
+	class UserFavoriteAdmin(object):
+	    list_display = ['user', 'fav_id', 'fav_type', 'add_time']
+	    search_fields = ['user', 'fav_id', 'fav_type']
+	    list_filter = ['user', 'fav_id', 'fav_type', 'add_time']
+	
+	class UserMessageAdmin(object):
+	    list_display = ['user', 'message', 'has_read', 'add_time']
+	    search_fields = ['user', 'message', 'has_read']
+	    list_filter = ['user', 'message', 'has_read', 'add_time']
+	
+	class UserCourseAdmin(object):
+	    list_display = ['user', 'course', 'add_time']
+	    search_fields = ['user', 'course']
+	    list_filter = ['user', 'course', 'add_time']
+	
+	xadmin.site.register(UserAsk, UserAskAdmin)
+	xadmin.site.register(CourseComments, CourseCommentsAdmin)
+	xadmin.site.register(UserFavorite, UserFavoriteAdmin)
+	xadmin.site.register(UserMessage, UserMessageAdmin)
+	xadmin.site.register(UserCourse, UserCourseAdmin)
+	`
+
+	`import xadmin
+	from .models import *
+	
+	class CourseAdmin(object):
+	    list_display = ['name', 'desc', 'detail', 'degree', 'lern_times', 'students', 'fav_nums', 'image', 'click_num', 'add_time']
+	    search_fields = ['name', 'desc', 'detail', 'degree', 'students', 'fav_nums', 'image', 'click_num']
+	    list_filter = ['name', 'desc', 'detail', 'degree', 'lern_times', 'students', 'fav_nums', 'image', 'click_num', 'add_time']
+	
+	class LessonAdmin(object):
+	    list_display = ['course', 'name', 'add_time']
+	    search_fields = ['course', 'name']
+	    list_filter = ['course', 'name', 'add_time']
+	
+	class VideoAdmin(object):
+	    list_display = ['lesson', 'name', 'add_time']
+	    search_fields = ['lesson', 'name']
+	    list_filter = ['lesson', 'name', 'add_time']
+	
+	class CourseResourceAdmin(object):
+	    list_display = ['course', 'name', 'download', 'add_time']
+	    search_fields = ['course', 'name', 'download']
+	    list_filter = ['course', 'name', 'download', 'add_time']
+	
+	xadmin.site.register(Course, CourseAdmin)
+	xadmin.site.register(Lesson, LessonAdmin)
+	xadmin.site.register(Video, VideoAdmin)
+	xadmin.site.register(CourseResource, CourseResourceAdmin)`
+	
+	'
+	import xadmin
+	from .models import CityDict, CourseOrg, Teacher
+	
+	
+	class CityDictAdmin(object):
+	    list_display = ['name', 'desc', 'add_time']
+	    search_fields = ['name', 'desc']
+	    list_filter = ['name', 'desc', 'add_time']
+	
+	
+	class CourseOrgAdmin(object):
+	    list_display = ['name', 'desc', 'click_num', 'fav_nums', 'image', 'address', 'city', 'add_time']
+	    search_fields = ['name', 'desc', 'click_num', 'fav_nums', 'image', 'address', 'city']
+	    list_filter = ['name', 'desc', 'click_num', 'fav_nums', 'image', 'address', 'city', 'add_time']
+	
+	
+	class TeacherAdmin(object):
+	    list_display = ['name', 'work_yesrs', 'work_company', 'work_position', 'course', 'points', 'click_num', 'fav_nums', 'add_time']
+	    search_fields = ['name', 'work_yesrs', 'work_company', 'work_position', 'course', 'points', 'click_num', 'fav_nums',]
+	    list_filter = ['name', 'work_yesrs', 'work_company', 'work_position', 'course', 'points', 'click_num', 'fav_nums', 'add_time']
+	
+	xadmin.site.register(CityDict, CityDictAdmin)
+	xadmin.site.register(CourseOrg, CourseOrgAdmin)
+	xadmin.site.register(Teacher, TeacherAdmin)
+	'
+
+	
+
 ## 5-5 xadmin全局配置 ##
+** 修改xadmin主题，顶部名称等 **
+	
+	from xadmin import views
+	
+	添加 BaseSetting类继承object
+	class BaseSetting(object):
+		enable_themes = True  #开启使用主题
+		use_bootswatch = True #使用此选项需要使用网络，会有问题，详见 ** 遇到的问题 ** 2#
+	
+	注册 BaseSetting类
+		xadmin.site.register(views.BaseAdminView, BaseSetting)
+
+	
+	添加 GlobalSettings类继承object
+	class GlobalSettings(object):
+		site_title = "你的title" #后台管理系统的主题
+		site_footer = "footer" 		#下方的lable
+		menu_style = 'accordion'	#使后台model列表可以折起
+	注册GlobalSettings类继承object 类
+		xadmin.site.register(views.CommAdminView, GlobalSettings)
+	
+** 未实现的 **
+	自定义菜单显示顺序
+	
+	上面菜单的显示是根据我们注册的时间来显示的，我们可以自定义我们的菜单显示顺序：在users/adminx.py文件加上以下代码：
+	
+	
+	from users.models import EmailVerifyRecord, Banner, UserProfile
+	from courses.models import Course, CourseResource, Lesson, Video
+	from organization.models import CourseOrg, CityDict, Teacher
+	from operation.models import CourseComments, UserMessage, UserFavorite, UserCourse, UserAsk
+	from django.contrib.auth.models import Group, Permission
+	from xadmin.models import Log
+	
+	
+	class GlobalSettings(object):
+	    site_title = '慕学后台管理系统'
+	    site_footer = '慕海学习网'
+	    menu_style = 'accordion'
+	
+	    def get_site_menu(self):
+	        return (
+	                {'title': '课程管理', 'menus': (
+	                    {'title': '课程信息', 'url': self.get_model_url(Course, 'changelist')},
+	                    {'title': '章节信息', 'url': self.get_model_url(Lesson, 'changelist')},
+	                    {'title': '视频信息', 'url': self.get_model_url(Video, 'changelist')},
+	                    {'title': '课程资源', 'url': self.get_model_url(CourseResource, 'changelist')},
+	                    {'title': '课程评论', 'url': self.get_model_url(CourseComments, 'changelist')},
+	                )},
+	                {'title': '机构管理', 'menus': (
+	                    {'title': '所在城市', 'url': self.get_model_url(CityDict, 'changelist')},
+	                    {'title': '机构讲师', 'url': self.get_model_url(Teacher, 'changelist')},
+	                    {'title': '机构信息', 'url': self.get_model_url(CourseOrg, 'changelist')},
+	                )},
+	                {'title': '用户管理', 'menus': (
+	                    {'title': '用户信息', 'url': self.get_model_url(UserProfile, 'changelist')},
+	                    {'title': '用户验证', 'url': self.get_model_url(EmailVerifyRecord, 'changelist')},
+	                    {'title': '用户课程', 'url': self.get_model_url(UserCourse, 'changelist')},
+	                    {'title': '用户收藏', 'url': self.get_model_url(UserFavorite, 'changelist')},
+	                    {'title': '用户消息', 'url': self.get_model_url(UserMessage, 'changelist')},
+	                )},
+	
+	                {'title': '系统管理', 'menus': (
+	                    {'title': '用户咨询', 'url': self.get_model_url(UserAsk, 'changelist')},
+	                    {'title': '首页轮播', 'url': self.get_model_url(Banner, 'changelist')},
+	                    {'title': '用户分组', 'url': self.get_model_url(Group, 'changelist')},
+	                    {'title': '用户权限', 'url': self.get_model_url(Permission, 'changelist')},
+	                    {'title': '日志记录', 'url': self.get_model_url(Log, 'changelist')},
+	            )},)
+	
+	xadmin.site.register(views.CommAdminView, GlobalSettings)
+	
+	记住这段代码是和我们之前定义全局配置放在同一个函数里面的
+	注意：是from users.models import EmailVerifyRecord, Banner, UserProfile而不是：from apps.users.models import EmailVerifyRecord, Banner, UserProfile
+	
+	RuntimeError: Model class apps.users.models.UserProfile doesn't declare an explicit app_label and isn't in an application in INSTALLED_APPS.
+	
+	也就是说直接from users.models，不用再写上from apps.users.models。
 
 
 
 
-##
+# 第6章用户注册功能实现 #
+
+
+** 6-1 首页和登录页面的配置 **
+
+	拷贝index.html,login.html页面到templates文件夹
+	在urls.py中设置路由
+		'
+			from django.views.generic import TemplateView#使用此类as_view可以将html文件返回一个view
+			
+			urlpatterns = [
+			    url(r'^admin/', admin.site.urls),#django admin
+			    url(r'^xadmin/', xadmin.site.urls),#xadmin
+			    url(r'^$', TemplateView.as_view(template_name='index.html'), name='index'),#首页
+			    url(r'^login/$', TemplateView.as_view(template_name='login.html'), name='login')#登录
+			]		
+		'
+	在settings.py中设置静态文件路径 
+		'
+			#配置静态文件地址
+			STATICFILES_DIRS = (
+			    os.path.join(BASE_DIR, 'static'),
+			)
+		'
+	将静态文件拷贝到static文件夹中
+	修改html页面中的连接，将静态文件的连接都改为/static/开头，可用替换批量操作
+	修改页面中的超链接为刚设置好的路由即可。
+** 6-2 用户登录-1 **
+		1.在urls.py中设置路由
+		urlpatterns = [
+		    url(r'^admin/', admin.site.urls),#django admin
+		    url(r'^xadmin/', xadmin.site.urls),#xadmin
+		    url(r'^$', TemplateView.as_view(template_name='index.html'), name='index'),#首页
+		    # url(r'^login/$', TemplateView.as_view(template_name='login.html'), name='login')#登录
+		    url(r'^login/$', views.userLogin, name='login'),#登录
+		    url(r'^logout/$', views.userLogout, name='logout')#登出
+		]
+		
+		2.由于需要用邮箱或者用户名都能登录，django自带的登录验证功能就不能满足需求了，需要自定义一个登录验证方法。
+			1）在users.views中定义一个验证用的类继承ModelBackend，重写authenticate方法
+			
+				'
+				from django.contrib.auth.backends import ModelBackend
+				from django.db.models import Q
+				class CustomBackend(ModelBackend):
+				    '''
+				    自定义登陆验证函数，替代django自带的登陆验证函数
+				    '''
+				    def authenticate(self, username=None, password=None, **kwargs):
+				        try:
+				            #查询用户是否存在
+				            user = UserProfile.objects.get(Q(username=username) | Q(email=username))#用Q来多条件查询
+				            if user.check_password(password):
+				                # 验证成功返回用户
+				                return user
+				        except Exception as e:
+				            # 验证失败返回none
+				            print(e)
+				            return None
+				'
+			2）在settings.py中重载一个变量AUTHENTICATION_BACKENDS为刚才创建的验证类，注意为类型元组单个值得时候别忘加逗号
+				'
+					#自定义的登陆验证
+					AUTHENTICATION_BACKENDS = (
+					    'users.views.CustomBackend',
+					)
+
+				'
+			3）在users.views中添加userLogin方法
+				
+				'			
+					from django.contrib.auth import authenticate, login, logout
+					def userLogin(request):
+					
+					    if request.method == "POST":
+					        username = request.POST.get('username', None)
+					        password = request.POST.get('password', None)
+					        user = authenticate(username=username, password=password)#如果重载了settings.py中的AUTHENTICATION_BACKENDS这个函数会自动调用
+					        if user:
+					            login(request, user)
+					            return render(request, 'index.html')
+					        else:
+					            return render(request, 'login.html', {'msg': '用户登陆失败！'})
+					    elif request.method == "GET":
+					        return render(request, 'login.html', {})
+				'
+			4）在html页面中响应的修改，判断登录状态显示登录按钮或用户信息等。
+
+		3.在users.views中添加userLogout方法
+			'
+				from django.contrib.auth import authenticate, login, logout
+				def userLogout(request):
+				
+				    if request.method == "GET":
+				        logout(request)
+				        return render(request, 'index.html')
+			'
+			在html页面中将推出登录的连接指向此方法
+
+				
+** 6-3 用户登录-2 **
+** 6-4 用form实现登录-1 **
+** 6-5 用form实现登录-2 **
+** 6-6 session和cookie自动登录机制 **
+** 6-7 用户注册-1 **
+** 6-8 用户注册-2 **
+** 6-9 用户注册-3 **
+** 6-10 用户注册-4 **
+** 6-11 找回密码（1) **
+** 6-12 找回密码（2) **
+
+
+# 遇到的问题 #
+** 1.Error fetching command 'collectstatic': You're using the staticfiles app without having set the STATIC_ROOT setting to a filesystem path. **
+	解决（搜索到的方式）：修改settings.py中STATIC_ROOT为你的static静态文件的物理路径，比如说我静态文件存放在/home/user/www/static中，首先创建www目录下的static文件夹，最后修改settings.py中STATIC_ROOT指向/home/user/www/static。
+	（视频给的方式）： 未获得
+** 2.使用use_bootswatch = True xadmin主题的时候无法获取其他主题**
+	解决：
+		原文地址：https://blog.csdn.net/fanlei5458/article/details/80616296
+		xadmin采用源代码的方式引入到项目中
+
+		在xadmin使用的过程中，设置“use_bootswatch = True”，企图调出主题菜单，显示更多主题。然而设置了后，发现主题还是默认和bootstrap2，深入跟踪源代码，发现/xadmin/plugins/themes.py下的
+		
+		block_top_navmenu
+		当use_bootswatch 为True的时候，就会使用httplib2去
+		
+		http://bootswatch.com/api/3.json
+		网址获取主题菜单项。但是使用浏览器打开这个网址，http会被替换成https的。httplib2访问这个https的网址，就会报错。报错信息为：
+		
+		[SSL: SSLV3_ALERT_HANDSHAKE_FAILURE] sslv3 alert handshake failure
+		这边使用requests库来替代httplib2.
+		1.安装requests
+			pip install requests
+		2.在./xadmin/plugins/themes.py 引入requests
+			import requests
+		3.修改block_top_navmenu方法：
+		
+		block_top_navmenu代码
+		'
+	    def block_top_navmenu(self, context, nodes):
+
+	        themes = [
+	            {'name': _(u"Default"), 'description': _(u"Default bootstrap theme"), 'css': self.default_theme},
+	            {'name': _(u"Bootstrap2"), 'description': _(u"Bootstrap 2.x theme"), 'css': self.bootstrap2_theme},
+	            ]
+	        select_css = context.get('site_theme', self.default_theme)
+	
+	        if self.user_themes:
+	            themes.extend(self.user_themes)
+	
+	        if self.use_bootswatch:
+	
+	            ex_themes = cache.get(THEME_CACHE_KEY)
+	            if ex_themes:
+	                themes.extend(json.loads(ex_themes))
+	            else:
+	                ex_themes = []
+	                try:
+	                    flag = False  # 假如为True使用原来的代码，假如为Flase，使用requests库来访问
+	                    if flag:
+	                        h = httplib2.Http()
+	                        resp, content = h.request("https://bootswatch.com/api/3.json", 'GET', '',
+	                                                  headers={"Accept": "application/json",
+	                                                           "User-Agent": self.request.META['HTTP_USER_AGENT']})
+	                        if six.PY3:
+	                            content = content.decode()
+	                        watch_themes = json.loads(content)['themes']
+	                    else:
+	                        content = requests.get("https://bootswatch.com/api/3.json")
+	                        if six.PY3:
+	                            content = content.text.decode()
+	                        watch_themes = json.loads(content.text)['themes']
+	                    ex_themes.extend([
+	                        {'name': t['name'], 'description': t['description'],
+	                         'css': t['cssMin'], 'thumbnail': t['thumbnail']}
+	                        for t in watch_themes])
+	                except Exception as e:
+	                    print(e)
+	
+	                cache.set(THEME_CACHE_KEY, json.dumps(ex_themes), 24 * 3600)
+	                themes.extend(ex_themes)
+	
+	        nodes.append(
+	            loader.render_to_string('xadmin/blocks/comm.top.theme.html', {'themes': themes, 'select_css': select_css}))
+** 3. 全局变量设置后台model显示中文时：RuntimeError: Model class users.models.UserProfile doesn't declare an explicit app_label and isn't in an application in INSTALLED_APPS. **
+
+	如果已经mark了apps文件夹做sourcepath，需要注意在引用的时候不要from apps.appname... import ... 要把第一个apps去掉
+	还要注意每个app的apps.py中
+	class UsersConfig(AppConfig):
+    	name = 'users'#这个一定不要加apps
+		'
