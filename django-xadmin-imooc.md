@@ -899,7 +899,7 @@
 	将静态文件拷贝到static文件夹中
 	修改html页面中的连接，将静态文件的连接都改为/static/开头，可用替换批量操作
 	修改页面中的超链接为刚设置好的路由即可。
-** 6-2 用户登录-1 **
+** 6-2 ~ 6-3 用户登录 **
 		1.在urls.py中设置路由
 		urlpatterns = [
 		    url(r'^admin/', admin.site.urls),#django admin
@@ -970,12 +970,71 @@
 				        return render(request, 'index.html')
 			'
 			在html页面中将推出登录的连接指向此方法
+	
+** 6-4 ~ 6-5 用form实现登录 **
 
-				
-** 6-3 用户登录-2 **
-** 6-4 用form实现登录-1 **
-** 6-5 用form实现登录-2 **
+	*使用基于类的方法来实现登录
+		1.在views中定义登录类 LoginView
+		2.重写get与post函数，这两个函数相当于判断 if request.method == "POST":
+		3.在其中写上业务逻辑
+		4.在urls.py中引用并加上该类的路由以登录类为例 
+			'from users.views import LoginView
+			urlpatterns = [
+			    url(r'^login/$', LoginView.as_view(), name='login'),#使用类的方式实现登录,需要加括号（）是调用
+			]'
+			
+
+	*使用form来实现登录
+		1.在app中新建forms.py文件
+		2.引用from django import forms
+		3.新建登录类继承forms.Form
+			`from django import forms
+
+			class LoginForm(forms.Form):
+			    username = forms.CharField(required=True)
+			    password = forms.CharField(required=True, min_length=5)`
+		
+		4.在views中登录类的对应函数中实例化登录form类，并在构造方法中传入提交方法对应的变量比如post函数
+			`from forms import LoginForm
+			def post(self, request):
+				#生成表单实例,传入request.POST后会用form的成员变量与前台form中同样名称的input对应
+	       	 	loginForm = LoginForm(request.POST)`
+		5.使用 loginForm.is_valid()方法判断页面form填写是否合法，然后按照boolean值编写业务
+	
+		代码如下：
+			'
+			from forms import LoginForm
+			class LoginView(View):
+			    '''
+			        使用类的方式来实现登录，只需重载get与post函数即可
+			    '''
+			    def get(self, request):
+			        return render(request, 'login.html', {})
+			
+			    def post(self, request):
+			        #生成表单实例,传入request.POST后会用form的成员变量与前台form中同样名称的input对应
+			        loginForm = LoginForm(request.POST)
+			        if loginForm.is_valid():#此函数检查LoginForm实现类中的限制是否通过
+			            username = request.POST.get('username', None)
+			            password = request.POST.get('password', None)
+			            #使用自定义的验证函数CustomBackend
+			            user = authenticate(username=username, password=password)
+			            if user:
+			                #如果用户存在，执行登录返回index页面
+			                login(request, user)
+			                return render(request, 'index.html')
+			            else:
+			                #如果用户不存在将错误信息返回到页面
+			                return render(request, 'login.html', {'msg': '用户登陆失败！'})
+			        else:
+			            # 如果form表填写出错，将loginForm返回
+			            return render(request, 'login.html', {'loginFrom': loginForm})
+			'
+			
+
 ** 6-6 session和cookie自动登录机制 **
+	*理论知识
+	
 ** 6-7 用户注册-1 **
 ** 6-8 用户注册-2 **
 ** 6-9 用户注册-3 **
