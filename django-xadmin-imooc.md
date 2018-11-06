@@ -1035,10 +1035,306 @@
 ** 6-6 session和cookie自动登录机制 **
 	*理论知识
 	
-** 6-7 用户注册-1 **
-** 6-8 用户注册-2 **
-** 6-9 用户注册-3 **
-** 6-10 用户注册-4 **
+** 6-7 ~ 6-10 用户注册-1 **
+	*配置注册页面路由
+
+	    {#  href="{% url 'register' %}  可以获得urls.py中设置了name的url #}
+	    <a style="color:white" class="fr registerbtn" href="{% url 'register' %}">注册</a>
+	
+		{% load staticfiles %}{# 这样就可以使用{% static 'uri' %} 来使用静态文件了 与直接使用/static/效果一样 #}
+	    <link rel="stylesheet" type="text/css" href="{% static 'css/reset.css' %}">{# 改变服静态文件存放路径后的不用作修改操作 #}
+
+	
+	*使用django captcha 可以在from中添加一个叫CaptchaField的 Field
+		https://github.com/mbi/django-simple-captcha #验证码生成	使用0.4.6
+		文档地址：https://django-simple-captcha.readthedocs.io/en/latest/
+		
+		安装说明
+	    Install django-simple-captcha via pip: pip install  django-simple-captcha
+	
+	    Add captcha to the INSTALLED_APPS in your settings.py
+	
+	    Run python manage.py migrate
+	
+	    Add an entry to your urls.py:
+	
+	    urlpatterns += [
+	        url(r'^captcha/', include('captcha.urls')),
+	    ]
+
+	*定义Form
+
+		在views.py中registerView中实例化Form并返回到页面
+			'
+				class RegisterForm(forms.Form):
+				    email = forms.EmailField(required=True)
+				    password = forms.CharField(required=True, min_length=5)
+				    #使用验证Field
+				    captcha = CaptchaField(error_messages={"invalid": "验证码错误"})#定义验证码错误信息
+			'
+	
+	*在页面中使用{{ registerForm.captcha }}{# 使用验证码 django captcha 生成 #}，点击更改验证码需要js完成
+		'
+		//刷新验证码
+		function refresh_captcha(event){
+		    $.get("/captcha/refresh/?"+Math.random(), function(result){
+		        $('#'+event.data.form_id+' .captcha').attr("src",result.image_url);
+		        $('#id_captcha_0').attr("value",result.key);
+		    });
+		    return false;
+		}
+
+		'
+
+		django captcha原理：
+			在页面中会自动生成一个hashkey 然后和数据库中作比对，如果有的话对比验证码
+	
+	*编写post注册逻辑，记得html页面中input的name要与Form类中的一致，才能验证。
+		详见完整代码。
+
+	*生成加密密码
+		如果保存用户的时候不能直接保存明文需要加密处理，django中使用一下方法
+			from django.contrib.auth.hashers import make_password
+			make_password(password=password)
+
+	*发送激活链接至用户邮箱
+		验证逻辑是：
+			使用之前创建的EmailVerifyRecord model 现将email存储，然后生成一个随机code保存到EmailVerifyRecord对象
+			然后将code加到url链接中发送到用户邮箱，用户点击链接后从数据库中对应的EmailVerifyRecord对象中验证此code来
+			实现邮箱验证的功能.
+		apps中新建utils包，新建emailSend.py文件
+		新建sendRegisterEmail方法
+		使用django内置email模块发送邮件：
+			from django.core.mail import send_mail
+			新注册新浪邮箱：testdjangoemail@sina.com ， 密码 常用基础密码
+			在邮箱中需要设置 POP3/SMTP服务与IMAP4服务/SMTP服务 的状态为 **开启	**		
+
+			settings.py中设置
+			'	
+				EMAIL_HOST = 'smtp.sina.com'
+				EMAIL_PORT = 25
+				EMAIL_HOST_USER = 'testdjangoemail@sina.com'
+				EMAIL_HOST_PASSWORD = 'password'
+				EMAIL_USER_TLS = False
+				EMAIL_FROM = "testdjangoemail@sina.com"
+			'
+		代码如下：
+			'
+				##coding:utf-8
+				import random
+				
+				from testDjango.settings import EMAIL_FROM
+				from users.models import EmailVerifyRecord
+				from django.core.mail import send_mail
+				
+				def randonStr(rlength=32):
+				    '''
+				    生成随机字符的函数
+				    :param rlength:字符长度
+				    :return:
+				    '''
+				    result = ''
+				    chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
+				    length = len(chars) - 1
+				
+				    for i in range(rlength):
+				        result += chars[random.randint(0, length)]
+				
+				    return result
+								
+				
+				def sendRegisterEmail(email, stype='register'):
+				    '''
+				    发送邮箱验证emal的函数
+				    :param email:
+				    :param type: 判断是注册还是找回密码
+				    :return:
+				    '''
+				    code = randonStr()
+				    emailRecord = EmailVerifyRecord()
+				    emailRecord.code = code
+				    emailRecord.email = email
+				    emailRecord.send_type = stype
+				    emailRecord.save()
+				
+				    #发送邮件使用django的内部函数来实现
+				    email_title = ''
+				    email_body = ''
+				    '''
+				    EMAIL_HOST = 'smtp.sina.com'
+				    EMAIL_PORT = 25
+				    EMAIL_HOST_USER = 'testdjangoemail@sina.com'
+				    EMAIL_HOST_PASSWORD = 'Aa123456'
+				    EMAIL_USER_TLS = False
+				    EMAIL_FROM = "testdjangoemail@sina.com"
+				    '''
+				
+				
+				    #注册邮件
+				    if stype == 'register':
+				        email_title = '注册激活链接'
+				        email_body = '点击链接激活账号：http://127.0.0.1:8000/active/{}'.format(code)
+				        send_status = send_mail(
+				            subject=email_title,
+				            message=email_body,
+				            from_email=EMAIL_FROM,
+				            recipient_list=[email]
+				                  )
+				
+				        if send_status:
+				            #发送成功
+				            pass
+				        else:
+				            #发送失败
+				            pass
+				
+				    pass
+
+
+
+			'
+		views.py注册类中调用此函数
+	
+		在register.html中设置错误返回
+	        <div class="error btns" id="jsEmailTips">{% for key,val in registerForm.errors.items %}{{ val }}{% endfor %}</div>
+			相同与login.html也要设置一下错误之后input的样式，在各个包裹input的div的css样式中加上以下django模板语言
+			{% if registerForm.errors.input的name %}errorput{% endif %}
+			input将value的值回填到页面，这样即使用户输入错误跳转页面返回也不需要重新输入
+            <input  type="text" id="id_email" name="email" value="{{ registerForm.email.value }}" placeholder="请输入您的邮箱地址" />
+
+	*激活用户
+		添加一个激活url
+			*django 路由方面可以参考*
+				https://blog.csdn.net/luanpeng825485697/article/details/79252182
+	    	#通过url中正则传递参数的方式来获得参数，views中类get方法接收的时候需要加上一个与activeCode同名的形参
+    		url(r'^active/(?P<activeCode>.*)/$', ActiveUserView.as_view(), name='userActive'), # 激活
+			'
+				class ActiveUserView(View):
+			    '''
+			        激活用户
+			    '''
+			
+			    def get(self, request, activeCode):
+			        print(activeCode)
+			
+			
+			        return HttpResponseRedirect('/')
+
+			'
+		
+	*登录逻辑中添加验证用户激活
+		'
+	        if user:
+	       		#判断用户是否激活
+	            if user.is_active:
+	                #如果用户存在，执行登录返回index页面
+	                login(request, user)
+	                return render(request, 'index.html')
+	        else:
+	            return render(request, 'login.html', {'msg': '账号未激活'})
+		'
+	*完整代码：
+
+
+		*注册类*
+		'
+			class RegisterView(View):
+			    def get(self, request):
+			        registerForm = RegisterForm()
+			        return render(request, 'register.html', {'registerForm': registerForm})
+			
+			    def post(self, request):
+			
+			
+			        #不要忘记传入request.POST
+			        registerForm = RegisterForm(request.POST)
+			        #前端form是否验证成功（这个from包含验证码）
+			        if registerForm.is_valid():
+			
+			            email = request.POST.get('email', '')
+			            password = request.POST.get('password', '')
+			
+			            userProfile = UserProfile()
+			            userProfile.email = email
+			            userProfile.username = email
+			            userProfile.password = make_password(password=password)
+			            userProfile.is_active = False#表示用户还未通过邮箱激活
+			            userProfile.save()
+			            #发送激活链接
+			
+			            sendRegisterEmail(email=email, stype='register')
+			
+			
+			            return HttpResponseRedirect('/login/')
+			        else:
+			            return render(request, 'register.html', {'registerForm': registerForm})
+
+		'
+
+
+		*激活用户类*
+		'
+			class ActiveUserView(View):
+		    '''
+		        激活用户
+		    '''
+		
+		    def get(self, request, activeCode):
+		        #查询code是否存在
+		        allRecords = EmailVerifyRecord.objects.filter(code=activeCode)
+		        if allRecords:
+		            for record in allRecords:
+		                #查询此记录的email，通过email获得用户设置状态为激活然后保存
+		                email = record.email
+		                user = UserProfile.objects.get(email=email)
+		                user.is_active = True
+		                user.save()
+		
+		        #重定向到login页面
+		        return HttpResponseRedirect('/login/')
+		'
+
+
+		*添加验证激活后的登录类*
+		'
+			class LoginView(View):
+		    '''
+		        使用类的方式来实现登录，只需重载get与post函数即可
+		    '''
+		
+		    def get(self, request):
+		        return render(request, 'login.html', {})
+		
+		    def post(self, request):
+		
+		
+		        #生成表单实例,传入request.POST后会用form的成员变量与前台form中同样名称的input对应
+		        loginForm = LoginForm(request.POST)
+		        if loginForm.is_valid():#此函数检查LoginForm实现类中的限制是否通过
+		            username = request.POST.get('username', None)
+		            password = request.POST.get('password', None)
+		            #使用自定义的验证函数CustomBackend
+		            user = authenticate(username=username, password=password)
+		            if user:
+		                # # 如果用户存在，执行登录返回index页面
+		                # login(request, user)
+		                # return render(request, 'index.html')
+		                #判断用户是否激活
+		                if user.is_active:
+		                    #如果用户存在，执行登录返回index页面
+		                    login(request, user)
+		                    return render(request, 'index.html')
+		                else:
+		                    return render(request, 'login.html', {'msg': '账号未激活'})
+		            else:
+		                #如果用户不存在将错误信息返回到页面
+		                return render(request, 'login.html', {'msg': '用户登陆失败！'})
+		        else:
+		            # 如果form表填写出错，将loginForm返回
+		            return render(request, 'login.html', {'loginFrom': loginForm})
+
+		'
+
 ** 6-11 找回密码（1) **
 ** 6-12 找回密码（2) **
 
