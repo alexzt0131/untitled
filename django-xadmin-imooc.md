@@ -223,7 +223,7 @@
 	**course-课程管理**
 	**organization-机构和教师管理**
 	**operation-用户操作管理**
-##  ##实现流程
+## 实现流程 ##
 **前期准备工作**
 	0.开发环境选择
 		django = 1.9.8
@@ -1243,29 +1243,33 @@
 			        registerForm = RegisterForm()
 			        return render(request, 'register.html', {'registerForm': registerForm})
 			
-			    def post(self, request):
-			
-			
+		        def post(self, request):
 			        #不要忘记传入request.POST
 			        registerForm = RegisterForm(request.POST)
 			        #前端form是否验证成功（这个from包含验证码）
 			        if registerForm.is_valid():
 			
 			            email = request.POST.get('email', '')
-			            password = request.POST.get('password', '')
+			            #用email判断用户是否已经注册
+			            if UserProfile.objects.filter(email=email):
+			                #已注册
+			                return render(request, 'register.html', {'registerForm': registerForm, 'msg': '用户已存在!'})
+			            else:
+			                #未注册
 			
-			            userProfile = UserProfile()
-			            userProfile.email = email
-			            userProfile.username = email
-			            userProfile.password = make_password(password=password)
-			            userProfile.is_active = False#表示用户还未通过邮箱激活
-			            userProfile.save()
-			            #发送激活链接
+			                password = request.POST.get('password', '')
+			                userProfile = UserProfile()
+			                userProfile.email = email
+			                userProfile.username = email
+			                userProfile.password = make_password(password=password)
+			                userProfile.is_active = False#表示用户还未通过邮箱激活
+			                userProfile.save()
+			                #发送激活链接
 			
-			            sendRegisterEmail(email=email, stype='register')
+			                sendRegisterEmail(email=email, stype='register')
 			
 			
-			            return HttpResponseRedirect('/login/')
+			                return HttpResponseRedirect('/login/')
 			        else:
 			            return render(request, 'register.html', {'registerForm': registerForm})
 
@@ -1289,7 +1293,9 @@
 		                user = UserProfile.objects.get(email=email)
 		                user.is_active = True
 		                user.save()
-		
+		        else:
+		            #告知用户激活失败
+		            return HttpResponse('<h1>连接失效</h1>')
 		        #重定向到login页面
 		        return HttpResponseRedirect('/login/')
 		'
@@ -1335,8 +1341,138 @@
 
 		'
 
-** 6-11 找回密码（1) **
-** 6-12 找回密码（2) **
+** 6-11 ~ 6-12 找回密码 **
+	
+	*将forgetpwd.html拷贝到template中
+		修改静态文件地址
+	*在views中定义ForgetPwdView，渲染forgetpwd.html，并配置路由
+		'	
+	    url(r'forget/$', views.ForgetPwdView.as_view, name='forget'), #忘记密码页面
+		
+		class ForgetPwdView(View):
+
+		    def get(self, request):
+		
+		        return render(request, 'forgetpwd.html')
+		'
+	
+	*在login页面中将忘记密码连接指向forget
+
+	*在forms.py中添加RestPwdForm
+		'
+		class ForgetForm(forms.Form):
+		    email = forms.EmailField(required=True)
+		    # 使用验证Field
+		    captcha = CaptchaField(error_messages={"invalid": "验证码错误"})  # 定义验证码错误信息
+		'
+	*修改ForgetPwdView将ForgetForm返回到页面forgetpwd.html实现验证码功能
+		修改一下get方法即可
+			'
+		    def get(self, request):
+		        forgetForm = ForgetForm()
+		        return render(request, 'forgetpwd.html', {"forgetForm": forgetForm})
+			'
+		html中相应位置添加{{ forgetForm.captcha }}
+
+	*编写ForgetPwdView中的post函数
+		验证表单合法性
+		获得html页面提交的email
+		发送验证邮件
+		'
+	    def post(self, request):
+	        #获得form对象并验证前天填写是否合法
+	        forgetForm = ForgetForm(request.POST)#!!!!!!!!!千万不要忘记填写request.POST
+	        if forgetForm.is_valid():
+	            #获得email
+	            email = request.POST.get('email', '')
+	            #发送验证邮件
+	            sendRegisterEmail(email=email, stype='forget')
+	            return HttpResponse('邮件发送成功，前往邮箱重置密码。')
+	        else:
+	            return render(request, 'forgetpwd.html', {"forgetForm": forgetForm})
+		'
+		html中设置根据表单是否有错显示错误css与用户输入的回显
+			'
+			<div class="form-group marb20 {% if forgetForm.errors.email %}errorput{% endif %}">
+                <label>帐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;号</label>
+                <input type="text" id="account" name="email" value={{ forgetForm.email.value }} placeholder="邮箱" />
+            </div>
+			'
+	
+	*将password_reset.html拷贝到template文件夹，设置url路由
+		'
+	    url(r'^reset/(?P<resetCode>.*)/$', views.ResetView.as_view(), name='resetPwd'), # 找回密码
+		'	
+
+	*views中添加修改密码的ResetView类
+		接收邮件内重置密码的code，通过EmailVerifyRecord对象获得email
+		将email返回到修改密码页面password_reset.html,post中找回逻辑需要根据email找到用户
+
+	*添加密码修改form类
+		'
+		class ModifyPwdForm(forms.Form):
+		    password = forms.CharField(required=True, min_length=5)
+		    password2 = forms.CharField(required=True, min_length=5)
+		'
+	*修改密码的POST要提交到一个新的连接resetPwd的连接需要提交一个resetCode，需要新建一个不要提供code的url，相应的类也是要新建。
+		
+		新建url
+			'
+    		url(r'^modifyPwd/$', views.ModifyPwd.as_view(), name='modifyPwd'), # 修改密码
+			'		
+		将password_reset.html form中的action改为新的url
+		views编写ModifyPwd类实现post方法处理提交的密码
+			'
+			class ModifyPwd(View):
+			    '''
+			    因password_reset提交到post携带不了code，ResetView的url不适用所以才新建此类
+			    '''
+			    def post(self, request):
+			        #获得form表单
+			        modifyPwdForm = ModifyPwdForm(request.POST)##别忘记参数
+			        email = request.POST.get('email', '')
+			        rpwd = None
+			        #判断前台form是否合法
+			        if modifyPwdForm.is_valid():
+			            pwd = request.POST.get('password', '')
+			            pwd2 = request.POST.get('password2', '')
+			
+			            #判断密码是否一样
+			            if pwd != pwd2:
+			                return render(request, 'password_reset.html', {'email': email, 'msg': '密码不一致'})
+			            else:
+			                #找到user
+			                user = UserProfile.objects.get(email=email)
+			                user.password = make_password(password=pwd)
+			                user.save()
+			                # 重定向到login页面
+			                return HttpResponseRedirect('/login/')
+			        else:
+			            return render(request, 'password_reset.html', {'email': email, 'modifyPwdForm': modifyPwdForm})
+			'
+	
+	*未实现
+
+		code过期，单次使用。
+
+
+	
+	
+
+
+# 第7章课程机构功能实现 #
+** 7-1 django templates模板继承1 **
+** 7-2 django templates模板继承2 **
+** 7-3 课程机构列表页数据展示1 **
+** 7-4 课程机构列表页数据展示2 **
+** 7-5 列表分页功能 **
+** 7-6 列表筛选功能 **
+** 7-7 modelform提交我要学习咨询1 **
+** 7-8 modelform提交我要学习咨询2 **
+** 7-9 机构详情展示-1 **
+** 7-10 机构详情展示-2 **
+** 7-11 机构详情展示-3 **
+** 7-12 课程机构收藏功能 ** 
 
 
 # 遇到的问题 #
