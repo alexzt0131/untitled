@@ -1456,16 +1456,164 @@
 		code过期，单次使用。
 
 
-	
-	
-
-
 # 第7章课程机构功能实现 #
-** 7-1 django templates模板继承1 **
-** 7-2 django templates模板继承2 **
-** 7-3 课程机构列表页数据展示1 **
-** 7-4 课程机构列表页数据展示2 **
+** 7-1 ~ 7-2 django templates模板继承 **
+	*将org-list.html拷贝到template文件夹中
+	*定义org_list的url
+		'
+	    #课程机构首页
+    	url(r'^org_list/$', OrgView.as_view(), name='org_list'),
+		'
+	*新建base.html文件，将org-list.html的内容拷贝到其中
+	*将需要继承的位置用{% block block名 %} {% endblock %}包裹起来，比如说header和footer
+	*在org-list.html页面使用{% extends 'base.html' %}
+	*由于base页面有使用static关键字的内容所以继承的页面中也需要引入{% load staticfiles %}
+	*使用{% block block名 %} {% endblock %}来修改block中的内容
+
+** 7-3 ~ 7-4 课程机构列表页数据展示 **
+	*在xadmin中添加数据
+		添加城市信息
+		在添加图片的时候还需要在settings.py中设置media文件夹的URL
+			'
+			#media文件存放地址
+			MEDIA_RUL = '/media/'
+			MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+			'	
+		这样在models中设计的如：
+    		image = models.ImageField(upload_to="org/%Y/%m", verbose_name='封面图')
+			设置upload_to属性才会将文件存到media文件夹中
+
+			** ImageField在数据库中存储的是文件的相对路径，引用方法如下：**
+				1.设置MEDIA_URL 与 MEDIA_ROOT 路径
+				2.settings.py的TEMPLATES中的context_processors添加一个media的django处理类'django.core.context_processors.media'这样django就会将media的路径注册到html中
+				3.urls.py中设置上传文件夹media的处理函数
+					'
+					from django.views.static import serve
+				    #配置media文件处理
+    				url(r'^media/(?P<path>.*)$', serve, {'document_root': MEDIA_ROOT})
+					'
+				4.html中引用的时候{{ MEDIA_URL }}{{ 含有ImageField属性的对象.image }}
+				
+
+
+	*由于课程机构内没有区分机构类别的属性，现在补上一个。
+		'category = models.CharField(max_length=20, choices=(('pxjg', "培训机构"), ('gx', '高校'), ('gr', '个人')), verbose_name='机构类别', default='pxjg')'
+		
+		migrate 更新数据库
+		
+	*OrgView中查询所有机构与城市数据并返回到org-list.html页面中
+		
+		OrgView
+		'
+		class OrgView(View):
+		    def get(self, request):
+		        all_orgs = CourseOrg.objects.all()
+		        all_cities = CityDict.objects.all()
+		        ret = {
+		            'all_orgs': all_orgs,
+		            'all_cities': all_cities
+		        }
+		        return render(request, 'org-list.html', ret)
+		'
+		html
+			'
+			<li>
+				<h2>所在地区</h2>
+				<div class="more">更多</div>
+				<div class="cont">
+	                <a href="?ct="><span class="active2">全部</span></a>
+	                        {% for city in all_cities %}
+	                            <a href="?city=1&ct="><span class="">{{ city.name }}</span></a>
+	                        {% endfor %}
+				</div>
+			</li>
+			'
 ** 7-5 列表分页功能 **
+	*使用django-pure-pagination分页库
+
+		地址：https://github.com/jamespacileo/django-pure-pagination
+
+	*pip安装：
+		pip install django-pure-pagination
+
+	*在settings.py中配置
+		'
+		INSTALLED_APPS = (
+		    ...
+		    'pure_pagination',
+		)
+		'
+		可选设置
+		'
+		PAGINATION_SETTINGS = {
+		    'PAGE_RANGE_DISPLAYED': 10,
+		    'MARGIN_PAGES_DISPLAYED': 2,
+		
+		    'SHOW_FIRST_PAGE_WHEN_INVALID': True,
+		}
+		'
+
+	
+	*按分页显示OrgView
+		'
+		class OrgView(View):
+		    def get(self, request):
+		        #所有课程和城市
+		        all_orgs = CourseOrg.objects.all()
+		        all_cities = CityDict.objects.all()
+		        org_nums = all_orgs.count()
+		
+		        #分页获得所有机构
+		        #获得页码的代码，没有获得1
+		        try:
+		            page = request.GET.get('page', 1)
+		        except PageNotAnInteger:
+		            page = 1
+                #Paginator函数,object_list为所有的obj，per_page为每页显示数量
+		        p = Paginator(object_list=all_orgs, per_page=5, request=request)
+		        #按per_page分页返回到页面
+		        orgs = p.page(page)
+		
+		        #返回到页面的数据
+		        ret = {
+		            'all_orgs': orgs,
+		            'all_cities': all_cities,
+		            'org_nums': org_nums
+		        }
+		        return render(request, 'org-list.html', ret)
+		'
+
+	*html中的代码
+		'
+		<div class="pageturn">
+            {# 使用paginator自带的渲染 {{ all_orgs.render }} #}
+            <ul class="pagelist">
+                {# 判断是否有前页 #}
+                {% if all_orgs.has_previous %}
+                    <li class="long"><a href="?{{ all_orgs.previous_page_number.querystring }}">上一页</a></li>
+                {% endif %}
+
+                {# 分页显示 #}
+                {% for page in all_orgs.pages %}
+                    {% if page %}
+                        {% ifequal page all_orgs.number %}
+                            <li class="active"><a href="javascript:void(0);">{{ page }}</a></li>
+                        {% else %}
+                            <li><a href="?{{ page.querystring }}" class="page">{{ page }}</a></li>
+                        {% endifequal %}
+                    {% endif %}
+                {% endfor %}
+
+                {# 判断是否有后页 #}
+                {% if all_orgs.has_next %}
+                    <li class="long"><a href="?{{ all_orgs.next_page_number.querystring }}">下一页</a></li>
+                {% endif %}
+            </ul>
+
+        </div>
+		'
+	
 ** 7-6 列表筛选功能 **
 ** 7-7 modelform提交我要学习咨询1 **
 ** 7-8 modelform提交我要学习咨询2 **
@@ -1554,3 +1702,28 @@
 	class UsersConfig(AppConfig):
     	name = 'users'#这个一定不要加apps
 		'
+
+** 4.在html中引用上传到media文件夹中的图片的方法 **
+
+		在settings.py中配置
+		'		
+		#media文件存放地址
+		MEDIA_RUL = '/media/'
+		MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+		'	
+
+		这样在models中设计的如：
+    		image = models.ImageField(upload_to="org/%Y/%m", verbose_name='封面图')
+			设置upload_to属性才会将文件存到media文件夹中
+
+		** ImageField在数据库中存储的是文件的相对路径，引用方法如下：**
+			1.设置MEDIA_URL 与 MEDIA_ROOT 路径
+			2.settings.py的TEMPLATES中的context_processors添加一个media的django处理类'django.core.context_processors.media'这样django就会将media的路径注册到html中
+			3.urls.py中设置上传文件夹media的处理函数
+				'
+				from django.views.static import serve
+			    #配置media文件处理
+				url(r'^media/(?P<path>.*)$', serve, {'document_root': MEDIA_ROOT})
+				'
+			4.html中引用的时候{{ MEDIA_URL }}{{ 含有ImageField属性的对象.image 
