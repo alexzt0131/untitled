@@ -1615,8 +1615,245 @@
 		'
 	
 ** 7-6 列表筛选功能 **
-** 7-7 modelform提交我要学习咨询1 **
-** 7-8 modelform提交我要学习咨询2 **
+	
+	*城市筛选	
+
+		在html中将city的id发到后端处理
+			<a href="?city={{ city.id }}"><span class="">{{ city.name }}</span></a>
+		后台获得到传来的id后按照此id过滤数据库中，页面返回此结果
+			'
+			#按城市获得所有机构
+	        #页面传来的城市id
+	        cityId = request.GET.get('city', '')
+	        if cityId:
+	            #为何查city，因为在数据库中orgs的外键city其实存储的时候city的id
+	            all_orgs = all_orgs.filter(city=cityId)
+			'
+		html中设置选定city的样式
+			将cityId传回到html中并在连接中判断是否是当前id，是的话就改变样式
+
+				'<a href="?city={{ city.id }}"><span class="{% ifequal cityId city.id|stringformat:"i" %}active2{% endifequal %}">{{ city.name }}</span></a>'
+				在这里要注意一下，city.id是int值需要做转换str字符串处理，可以世界使用django的模板过滤器stringformat:"i" 这是固定写法。
+		html中设置全部连接的样式
+			'<a href="?ct="><span class="{% ifequal cityId '' %}active2{% endifequal %}">全部</span></a>'
+	
+	*类别筛选
+		在html中将city的id发到后端处理，这里一并将返回category判断样式写上
+		'<a href="?ct=pxjg"><span class="">培训机构</span></a>'
+		后台与按城市差不错
+			'
+			#按类别获得所有机构
+	        #页面传来的类别
+	        category = request.GET.get('ct', '')
+	        if category:
+	            #为何查city，因为在数据库中orgs的外键city其实存储的时候city的id
+	            all_orgs = all_orgs.filter(category=category)
+			'
+		将category返回到页面判断样式
+			'<a href="?ct=pxjg"><span class="{% ifequal category 'pxjg' %}active2{% endifequal %}">培训机构</span></a>'
+			全部类别的处理
+			'<a href=""><span class="{% ifequal category '' %}active2{% endifequal %}">全部</span></a>'
+			
+	*新的问题
+		在html页面中同时选择 城市与类别的时候上面的代码没有能将数据关联上，需要稍作修改
+		将city的连接中加上判断category的代码，将category的连接中加上判断city的代码
+
+			所有机构，连接中不写category表示后台代码获得的是空既查询所有
+			'<a href="?city={{ cityId }}"><span class="{% ifequal category '' %}active2{% endifequal %}">全部</span></a>'
+			个别机构
+			'<a href="?ct=pxjg&city={{ cityId }}"><span class="{% ifequal category 'pxjg' %}active2{% endifequal %}">培训机构</span></a>'
+			
+			所有城市,连接中不写city表示后台代码获得的是空既查询所有		
+			'<a href="?ct={{ category }}"><span class="{% ifequal cityId '' %}active2{% endifequal %}">全部</span></a>' 
+			个别城市
+			'<a href="?city={{ city.id }}&ct={{ category }}"><span class="{% ifequal cityId city.id|stringformat:"i" %}active2{% endifequal %}">{{ city.name }}</span></a>'
+
+		** 这样变量all_orgs就会通过多次的filter方法过滤出需要的数据了 **	
+	
+		最后将统计机构数量的方法设置的靠后一些，在所有的filter方法后，这样就可以统计出正确的机构数了。
+
+	*机构排名实现
+		
+		在方法一开始的时候取排行数据，并返回到html中
+			'
+	        #取点击数前三的机构
+	        hot_org = all_orgs.order_by('click_num')[:3]
+			'
+		
+		html中遍历所有的排行数据
+			{{ forloop.counter }}django模板中自带的计数器
+			'
+	        <div class="right companyrank layout">
+	            <div class="head">授课机构排名</div>
+	            {% for hot in hot_org %}
+	                <dl class="des">
+	                    <dt class="num fl">{{ forloop.counter }}</dt>
+	                    <dd>
+	                        <a href=""><h1>{{ hot.name }}</h1></a>
+	                        <p>{{ hot.address }}</p>
+	                    </dd>
+	                </dl>
+	            {% endfor %}
+	        </div>
+			'
+	*按学生人数与课程数培训机构
+		由于model中没有这两个字段需要添加一下
+			CourseOrg中添加
+			'
+		    students = models.IntegerField(default=0, verbose_name='学习人数')
+		    course_num = models.IntegerField(default=0, verbose_name='课程数')
+			'
+			migrate 生成数据表
+		连接中机上参数
+			由于考虑要与地区和机构类别关联所以连接上也要加上这两个参数，逻辑和之前的代码相仿，样式的判断也直接加上就可以了
+				'
+	            <li class="{% ifequal sortBy '' %}active{% endifequal %}"><a href="?ct={{ category }}&city={{ city }}">全部</a></li>
+	            <li class="{% ifequal sortBy 'students' %}active{% endifequal %}"><a href="?sort=students&ct={{ category }}&city={{ city }}">学习人数 &#8595;</a></li>
+	            <li class="{% ifequal sortBy 'courses' %}active{% endifequal %}"><a href="?sort=courses&ct={{ category }}&city={{ city }}">课程数 &#8595;</a></li>
+				'
+		后台加上
+			'
+	        #按参数排序
+	        sortBy = request.GET.get('sort', '')
+	        if sortBy:
+	            if sortBy == 'sutdents':
+	                all_orgs = all_orgs.order_by('-students')
+	            elif sortBy == 'courses':
+	                all_orgs = all_orgs.order_by('-course_num')
+	        org_nums = all_orgs.count()
+			'
+		将sortBy返回到html页面
+	** 以上就完成了排序以及过滤 **
+
+** 7-7 ~ 7-8 modelform提交我要学习咨询1 **
+
+	*使用django的ModelForm来验证表单
+		在organization app文件夹中创建forms.py文件
+		？编写对应的表类（老方法）
+		(新)直接将model转换为form
+		新建form表继承forms.ModelForm，在Meta中定义用 model=model名 转换那个model，并可指定字段
+		在ModelForm中可以再添加自定义字段
+		'
+		##coding:utf-8
+		from django import forms
+		from opration.models import UserAsk
+		#使用ModelForm直接将model转换为form
+		class UserAskForm(forms.ModelForm):
+		    #编写Meta字段来指定转换model与需要的字段
+		    class Meta:
+		        model = UserAsk
+		        fields = ['name', 'mobile', 'course_name']
+		'
+
+
+	*使用url分发
+		在主urls.py中可以引入各个app中的urls.py可以方便管理
+		以org-list.html页面的路由为例
+		以前是直接在主urls.py文件中定义（与项目同名的文件夹的urls.py中）
+			'url(r'^org_list/$', OrgView.as_view(), name='org_list'),'
+		现在可以各个app中自定义一个urls.py然后用主urls.py引用即可
+		在organization app中新建一个urls.py文件写入代码如下
+			'
+			##coding:utf-8
+			from django.conf.urls import url, include
+			from organization.views import OrgView
+			urlpatterns = [
+			    #课程机构首页
+			    url(r'^list/$', OrgView.as_view(), name='org_list'),
+			]
+			'
+		然后在主urls.py中
+    		'url(r'^org/', include('organization.urls', namespace='org')),'
+		可见在主url中定义的是页面只要有以org/开头的请求都会转发到organization.urls这个文件，namespace='org'是命名空间，在页面使用{% url 'url name'%}是会用到，
+		
+		** 现在可以通过127.0.0.1:8000/org/list来访问刚才设定的路由了 **
+		
+		html页面中需要引用此链接的时候直接使用{% url 'org:org_list'%},这里就是刚说的命名空间了，避免了与主urls.py中同名的name冲突。
+		
+	*使用ajax来提交我要学习的表单
+
+		先写后台的代码
+		'
+		class AddUserAskView(View):
+	    '''
+	    用户添加咨询
+	    使用ajax异步操作实现，不用刷新页面
+	    '''
+	    def post(self, request):
+	        #实例化form
+	        uaf = UserAskForm(request.POST)
+	        #判断表单合法性
+	        if uaf.is_valid():
+	            #可以直接进行save
+	            userAsk = uaf.save(commit=True)
+	            #使用HttpResponse返回json数据
+	            return HttpResponse("{'status':'success'}", content_type='application/json')
+	        else:
+                # return HttpResponse("{'status':'fail', 'msg':{}}".format(uaf.errors), content_type='application/json')#因错误信息太多没做样式取消使用
+            	return HttpResponse("{'status':'fail', 'msg':{}}".format('添加出错'), content_type='application/json')
+		'
+
+		设置路由
+		'url(r'^addAsk/$', AddUserAskView.as_view(), name='add_ask'),'
+
+		html中添加ajax代码来异步提交数据，不要忘记在form中添加csrf_token,还有页面input的name与form和model要一致
+		'
+	    <script type="text/javascript">
+	        $('#jsStayBtn').on('click', function(){//点击事件
+	            $.ajax({//发送ajax请求
+	                cache: false,
+	                type: "POST",
+	                url: "{% url 'org:add_ask' %}",//请求地址
+	                data:$('#jsStayForm').serialize(),//序列化form中的参数传到后台
+	                async: true,
+	                success: function (data) {//请求成功的回调函数
+	                    console.log(data);
+	                    if(data.status == "success"){
+	                        $('#jsStayForm')[0].reset();
+	                        alert("提交成功");
+	                    }else if(data.status == 'fail'){
+	                        $('#jsCompanyTips').html(data.msg)
+	                    }
+	                },
+	            });
+	        });
+	    </script>
+		'
+		这样就可以异步提交了
+
+	*优化表单验证
+		对手机号码验证,可以在view中作也可以在form类中添加必须以clean_开始加上fields名的函数来自定义验证表单
+			在form类中定义验证方法，完整的代码
+			'
+			##coding:utf-8
+			import re
+			from django import forms
+			from opration.models import UserAsk
+			#使用ModelForm直接将model转换为form
+			class UserAskForm(forms.ModelForm):
+			    #编写Meta字段来指定转换model与需要的字段
+			    class Meta:
+			        model = UserAsk
+			        fields = ['name', 'mobile', 'course_name']
+				#必须以clean_开始加上fields名
+			    def clean_mobile(self):
+			        '''
+			        验证手机合法性
+			        :return:
+			        '''
+			        mobile = self.cleaned_data['mobile']
+			        pattern = r"^((13[0-9])|(14[5,7])|(15[0-3,5-9])|(17[0,3,5-8])|(18[0-9])|166|198|199|(147))\d{8}$";
+			        p = re.compile(pattern=pattern)
+			        if p.match(mobile):
+			            #成功返回mobile
+			            return mobile
+			        else:
+			            #失败 固定写法
+			            raise  forms.ValidationError('手机号码非法', code='mobile_invalid')
+			'
+			
+			
+		
 ** 7-9 机构详情展示-1 **
 ** 7-10 机构详情展示-2 **
 ** 7-11 机构详情展示-3 **
